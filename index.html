@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trifix Generator</title>
+    <style>
+      :root {
+        --bg: #0c0c0c;
+        --term-front: #ffffff;
+        --term-dim: #4f4f4f;
+        --glow: 0 0 8px rgba(51, 255, 51, 0.6);
+        --scanline: repeating-linear-gradient(
+          0deg,
+          rgba(0, 0, 0, 0.15),
+          rgba(0, 0, 0, 0.15) 1px,
+          transparent 1px,
+          transparent 3px
+        );
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--term-front);
+        font-family: monospace;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .terminal {
+        position: relative;
+        width: 340px;
+        border: 2px solid var(--term-front);
+        background: #000;
+        padding: 20px;
+        box-shadow:
+          0 0 15px rgba(51, 255, 51, 0.25),
+          inset 0 0 10px rgba(51, 255, 51, 0.08);
+        overflow: hidden;
+      }
+
+      .terminal::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--scanline);
+        pointer-events: none;
+        opacity: 0.4;
+      }
+
+      .header {
+        text-align: center;
+        font-size: 1.1rem;
+        font-weight: bold;
+        margin-bottom: 18px;
+        padding-bottom: 10px;
+        border-bottom: 1px dashed var(--term-dim);
+        text-shadow: var(--glow);
+        letter-spacing: 1px;
+      }
+
+      .controls {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .field {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      label {
+        font-size: 0.95rem;
+        text-shadow: 0 0 4px var(--term-front);
+      }
+
+      select {
+        appearance: none;
+        background: #0a0a0a;
+        color: var(--term-front);
+        border: 1px solid var(--term-front);
+        font-family: inherit;
+        font-size: 0.9rem;
+        padding: 6px 10px;
+        cursor: pointer;
+        width: 120px;
+        text-shadow: var(--glow);
+        transition: box-shadow 0.1s;
+      }
+
+      select:focus {
+        outline: none;
+        box-shadow: 0 0 10px var(--term-front);
+      }
+
+      select:hover:not(:disabled) {
+        background: #111;
+      }
+
+      select:disabled {
+        border-color: #222;
+        color: #333;
+        cursor: not-allowed;
+        text-shadow: none;
+      }
+
+      .core-field {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px dashed var(--term-dim);
+      }
+
+      .core-field label {
+        font-weight: bold;
+      }
+
+      .output {
+        margin-top: 20px;
+        padding: 12px;
+        background: rgba(51, 255, 51, 0.04);
+        border: 1px solid var(--term-dim);
+        text-align: center;
+        font-size: 1.05rem;
+        letter-spacing: 1.5px;
+        text-shadow: var(--glow);
+        position: relative;
+        z-index: 1;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .cursor {
+        display: inline-block;
+        width: 8px;
+        height: 1.1em;
+        background: var(--term-front);
+        margin-left: 4px;
+        animation: blink 1s step-end infinite;
+      }
+
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="terminal">
+      <div class="header">&gt; TRIFIX GENERATOR</div>
+
+      <div class="controls">
+        <div class="field">
+          <label>GUT (8-9-1):</label>
+          <select id="gut">
+            <option value="" disabled selected>--</option>
+            <option value="8">Type 8</option>
+            <option value="9">Type 9</option>
+            <option value="1">Type 1</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>HEART (2-3-4):</label>
+          <select id="heart">
+            <option value="" disabled selected>--</option>
+            <option value="2">Type 2</option>
+            <option value="3">Type 3</option>
+            <option value="4">Type 4</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>HEAD (5-6-7):</label>
+          <select id="head">
+            <option value="" disabled selected>--</option>
+            <option value="5">Type 5</option>
+            <option value="6">Type 6</option>
+            <option value="7">Type 7</option>
+          </select>
+        </div>
+
+        <div class="field core-field">
+          <label>CORE TYPE:</label>
+          <select id="core" disabled>
+            <option value="" disabled selected>SELECT</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="output">
+        <span id="result">&gt; ORDER: ---</span><span class="cursor"></span>
+      </div>
+    </div>
+
+    <script>
+      (() => {
+        // Standard clockwise sequence as specified
+        const CLOCKWISE = [8, 9, 1, 2, 3, 4, 5, 6, 7];
+
+        const gutEl = document.getElementById("gut");
+        const heartEl = document.getElementById("heart");
+        const headEl = document.getElementById("head");
+        const coreEl = document.getElementById("core");
+        const resultEl = document.getElementById("result");
+
+        function updateCoreOptions() {
+          const prevCore = coreEl.value;
+          const g = gutEl.value;
+          const h = heartEl.value;
+          const he = headEl.value;
+          const choices = [g, h, he].filter(Boolean);
+
+          // Reset core dropdown
+          coreEl.innerHTML = '<option value="" disabled>SELECT</option>';
+
+          if (choices.length < 3) {
+            coreEl.disabled = true;
+            resultEl.textContent = "> ORDER: ---";
+            return;
+          }
+
+          coreEl.disabled = false;
+          let preserved = false;
+
+          choices.forEach((num) => {
+            const opt = document.createElement("option");
+            opt.value = num;
+            opt.textContent = `Type ${num}`;
+            if (num === prevCore) {
+              opt.selected = true;
+              preserved = true;
+            }
+            coreEl.appendChild(opt);
+          });
+
+          if (!preserved) coreEl.selectedIndex = 0;
+          calculateOrder();
+        }
+
+        function calculateOrder() {
+          const g = parseInt(gutEl.value);
+          const h = parseInt(heartEl.value);
+          const he = parseInt(headEl.value);
+          const core = parseInt(coreEl.value);
+
+          if (isNaN(g) || isNaN(h) || isNaN(he) || isNaN(core)) return;
+
+          // Sort by clockwise position
+          const fixes = [g, h, he];
+          fixes.sort((a, b) => CLOCKWISE.indexOf(a) - CLOCKWISE.indexOf(b));
+
+          // Rotate so Core Type is first
+          const coreIdx = fixes.indexOf(core);
+          const ordered = [...fixes.slice(coreIdx), ...fixes.slice(0, coreIdx)];
+
+          resultEl.textContent = `> ORDER: ${ordered.join("-")}`;
+        }
+
+        // Attach listeners
+        gutEl.addEventListener("change", updateCoreOptions);
+        heartEl.addEventListener("change", updateCoreOptions);
+        headEl.addEventListener("change", updateCoreOptions);
+        coreEl.addEventListener("change", calculateOrder);
+      })();
+    </script>
+  </body>
+</html>
